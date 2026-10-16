@@ -112,7 +112,7 @@ function bump() {
 }
 
 // Votes never reach the server, so the "votes are coming in" buzz is made up here:
-// at random moments the heading bumps, a bubble sound plays and a fun line pops up.
+// at random moments the heading bumps, emojis pop up, a bubble sound plays and a fun line shows.
 let fakeTimer = null;
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 function fakeActivity(on) {
@@ -120,6 +120,7 @@ function fakeActivity(on) {
   if (!on) return;
   const pop = () => {
     FX.bubbles(4 + Math.floor(Math.random() * 4));
+    FX.shower([pick(question.emojis), ...question.emojis], 3 + Math.floor(Math.random() * 4), 500);
     if (question.lines && question.lines.length && Math.random() < 0.6) FX.toast(pick(question.lines));
     bump();
     fakeTimer = setTimeout(pop, 1200 + Math.random() * 2600);
@@ -171,7 +172,7 @@ function render() {
     if (drum) { drum.pause(); drum = null; }
     timer.textContent = '0:00';
     FX.renderResults($('main'), question, s);
-    if (!revealedShown) { revealedShown = true; FX.revealShow(s); }
+    if (!revealedShown) { revealedShown = true; FX.revealShow(s, true); }
     const i = all.findIndex((q) => q.id === qid);
     const next = all[i + 1];
     // always-visible button on the results screen so the host can move on whenever they want

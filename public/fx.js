@@ -141,9 +141,13 @@ const FX = (() => {
     }));
   }
 
-  async function revealShow(state) {
+  // `withEmojis`: only the host (projector) screen showers emojis; phones just play the sounds
+  async function revealShow(state, withEmojis = false) {
+    const emojis = withEmojis && state.revealEmojis && state.revealEmojis.length ? state.revealEmojis : null;
+    if (emojis) shower(emojis, 40, 2500);
     for (const s of state.revealSounds) await playAndWait(s, 1, 5000);
     play('laugh.mp3', 0.6);
+    if (emojis) shower(emojis, 20, 1500);
   }
 
   function fmt(ms) {

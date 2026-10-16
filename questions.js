@@ -29,6 +29,7 @@ module.exports = [
     ],
     revealLine: 'Beast = Dreadlock King',
     revealSounds: ['q1a.mp3', 'q1b.mp3'],
+    revealEmojis: ['🦁', '👑', '🔥', '💈', '😎'],
   },
   {
     id: 'q2',
@@ -53,6 +54,7 @@ module.exports = [
     ],
     revealLine: '100% germ-free kiss – Harpic wins!',
     revealSounds: ['q2a.mp3', 'q2b.mp3'],
+    revealEmojis: ['🚽', '🧼', '🤢', '💋', '🫧'],
   },
   {
     id: 'q3',
@@ -77,6 +79,7 @@ module.exports = [
     ],
     revealLine: 'Cheers to the බේබදු Girlfriend',
     revealSounds: ['q3a.m4a', 'q3b.mp3'],
+    revealEmojis: ['🍺', '🍻', '🥴', '🍾', '🤮'],
   },
   {
     id: 'q4',
@@ -101,5 +104,6 @@ module.exports = [
     ],
     revealLine: 'ඒ එයා තමයි... මොරටු යකා',
     revealSounds: ['q4a.mp3', 'q4b.mp3'],
+    revealEmojis: ['😈', '👹', '🔥', '💀', '🫢'],
   },
 ];
