@@ -71,17 +71,27 @@ function counts(q) {
   return c;
 }
 
-// Make the configured winner come out on top while keeping the total identical,
-// by moving votes from the current leader(s) to the winner one at a time.
-function riggedCounts(q) {
-  const c = counts(q);
+// Made-up percentages (summing to 100): the configured winner gets a clear lead,
+// the rest is spread fairly evenly over the other options, none of them at 0%.
+function fakePercents(q) {
+  const n = q.options.length;
   const w = q.winner;
-  const othersMax = () => Math.max(...c.filter((_, i) => i !== w));
-  while (c[w] <= othersMax() && othersMax() > 0) {
-    const top = c.reduce((best, v, i) => (i !== w && v > c[best] ? i : best), w === 0 ? 1 : 0);
-    c[top]--; c[w]++;
-  }
-  return c;
+  const base = 100 / n;
+  const win = Math.round(base * 1.5 + Math.random() * base * 0.4);
+  const others = q.options.map((_, i) => i).filter((i) => i !== w);
+  const weights = others.map(() => 0.6 + Math.random() * 0.8);
+  const sum = weights.reduce((a, b) => a + b, 0);
+  const raw = weights.map((x) => ((100 - win) * x) / sum);
+  const p = raw.map(Math.floor);
+  // hand out the rounding leftovers to the largest remainders so the total is exactly 100
+  let left = 100 - win - p.reduce((a, b) => a + b, 0);
+  raw.map((r, k) => [r - p[k], k]).sort((a, b) => b[0] - a[0]).forEach(([, k]) => { if (left > 0) { p[k]++; left--; } });
+  const out = q.options.map(() => 0);
+  out[w] = win;
+  others.forEach((i, k) => { out[i] = p[k]; });
+  // safety: winner must stay strictly on top
+  for (const i of others) while (out[i] >= out[w]) { out[i]--; out[w]++; }
+  return out;
 }
 
 function stateFor(qid, deviceIds = []) {
@@ -158,6 +168,14 @@ function endVoting(qid) {
   io.to(qid).emit('ended');
   broadcastState(qid);
 }
+function reveal(qid) {
+  const s = db.q[qid];
+  if (s.status !== 'ended') return;
+  s.status = 'revealed';
+  s.shown = fakePercents(findQ(qid));
+  save();
+  broadcastState(qid);
+}
 for (const q of QUESTIONS) scheduleEnd(q.id); // resume timers after a restart
 
 io.on('connection', (sock) => {
@@ -216,14 +234,7 @@ io.on('connection', (sock) => {
   sock.on('drumroll', hostOnly(() => {
     if (db.q[qid].status === 'ended') io.to(qid).emit('drumroll');
   }));
-  sock.on('reveal', hostOnly(() => {
-    const s = db.q[qid];
-    if (s.status !== 'ended') return;
-    s.status = 'revealed';
-    s.shown = riggedCounts(q);
-    save();
-    broadcastState(qid);
-  }));
+  sock.on('reveal', hostOnly(() => reveal(qid)));
   sock.on('reset', hostOnly(() => {
     clearTimeout(endTimers[qid]);
     db.q[qid] = freshQuestionState();

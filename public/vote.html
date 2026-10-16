@@ -129,30 +129,31 @@ function render() {
     st.innerHTML = `<div style="font-size:54px">⏳</div><h3>${WAIT_LINES[Math.floor(Math.random() * WAIT_LINES.length)]}</h3><div class="muted">Voting පටන් ගත්තම මෙතන options පේනවා</div>`;
     $('results').innerHTML = '';
   } else if (s.status === 'voting') {
-    $('voteArea').classList.remove('hidden');
+    const mine = s.voted ? question.options[s.myOption] : null;
     const update = () => {
       const left = s.endsAt - (Date.now() + offset);
       st.innerHTML = s.voted
-        ? `<div style="font-size:44px">🔒💖</div><h3>Vote එක lock කළා!</h3><div class="muted">Results secret 🤫 · ${FX.fmt(left)} ඉතුරුයි · ${s.total} votes</div>`
-        : `<h3>⏱️ ${FX.fmt(left)} ඉතුරුයි</h3><div class="muted">එකක් තෝරලා Vote කරන්න · ${s.total} votes දැනට</div>`;
+        ? `<div style="font-size:54px">✅</div><h3>Vote එක දැම්මා!</h3>
+           <div class="pill" style="margin:10px 0">ඔයා තේරුවේ: ${mine ? FX.esc(mine.label) : ''}</div>
+           <div class="muted">Results secret 🤫 · ${FX.fmt(left)} ඉතුරුයි · Big screen එකේ reveal එක බලාගෙන ඉන්න 👀</div>`
+        : `<h3>⏱️ ${FX.fmt(left)} ඉතුරුයි</h3><div class="muted">එකක් තෝරලා Vote කරන්න 👇</div>`;
     };
     update(); tick = setInterval(update, 500);
     if (s.voted) {
-      box.classList.add('locked');
+      // vote done – hide the options so the phone just shows the confirmation
       selected = s.myOption;
-      box.querySelectorAll('.opt').forEach((x) => x.classList.toggle('sel', Number(x.dataset.i) === s.myOption));
-      $('voteBtn').classList.add('hidden');
       $('reactBar').classList.remove('hidden');
     } else {
+      $('voteArea').classList.remove('hidden');
       box.classList.remove('locked');
       $('voteBtn').classList.remove('hidden');
     }
   } else if (s.status === 'ended') {
-    st.innerHTML = `<div style="font-size:54px">🥁</div><h3>Voting ඉවරයි!</h3><div class="muted">${s.total} votes · Big screen එකේ reveal එක බලාගෙන ඉන්න 👀</div>`;
+    st.innerHTML = `<div style="font-size:54px">🥁</div><h3>Voting ඉවරයි!</h3><div class="muted">Big screen එකේ reveal එක බලාගෙන ඉන්න 👀</div>`;
     $('reactBar').classList.remove('hidden');
   } else if (s.status === 'revealed') {
     if (window.drum) window.drum.pause();
-    st.innerHTML = `<h3>🎉 Results 🎉</h3><div class="muted">${s.total} votes</div>`;
+    st.innerHTML = `<h3>🎉 Results 🎉</h3>`;
     FX.renderResults($('results'), question, s);
     if (!revealedShown) { revealedShown = true; FX.revealShow(s); }
   }

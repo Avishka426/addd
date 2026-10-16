@@ -134,7 +134,7 @@ const FX = (() => {
           <div class="row">
             ${o.img ? `<img src="${o.img}" alt="">` : `<span>${o.emoji || ''}</span>`}
             <span class="lbl">${esc(o.label)}${i === state.winner ? ' 👑' : ''}</span>
-            <span class="pct">${state.results[i]} · ${pct}%</span>
+            <span class="pct">${pct}%</span>
           </div></div>`;
       }).join('')}`;
     requestAnimationFrame(() => requestAnimationFrame(() => {

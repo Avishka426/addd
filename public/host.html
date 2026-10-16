@@ -16,6 +16,12 @@
   .nav { display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; align-items: center; }
   .nav a { text-decoration: none; }
   .opts.image { gap: 10px; }
+  .live-votes .box { display: inline-block; font-size: clamp(64px, 12vw, 130px); line-height: 1.1; }
+  .live-votes .box.bump { animation: pop .35s ease; }
+  .live-votes h2 { color: var(--pink-700); }
+  .dots span { display: inline-block; animation: bob 1s ease-in-out infinite; }
+  .dots span:nth-child(2) { animation-delay: .15s; }
+  .dots span:nth-child(3) { animation-delay: .3s; }
   #suspense { font-size: clamp(60px, 14vw, 140px); text-align: center; animation: shake .35s infinite; }
 </style>
 </head>
@@ -48,7 +54,7 @@
       <div class="spacer"></div>
       <div class="card center">
         <div class="timer" id="timer">3:00</div>
-        <div class="counter"><b id="count">0</b> votes 🗳️</div>
+        <div class="counter" id="activity"></div>
         <div class="spacer"></div>
         <div class="row-gap" id="controls"></div>
       </div>
@@ -67,7 +73,7 @@ const params = new URLSearchParams(location.search);
 let key = params.get('key');
 try { if (key) localStorage.setItem('bv_key', key); else key = localStorage.getItem('bv_key'); } catch {}
 const $ = (id) => document.getElementById(id);
-let question, all, state, offset = 0, tick, revealedShown = false, lastTotal = 0, drum = null;
+let question, all, state, offset = 0, tick, revealedShown = false, drum = null;
 
 $('gateBtn').onclick = () => { FX.unlock(); FX.bubbles(6); $('gate').remove(); };
 
@@ -92,7 +98,7 @@ async function init() {
     FX.bubbles(5 + Math.floor(Math.random() * 4));
     FX.shower([p.emoji, ...question.emojis], 4 + Math.floor(Math.random() * 3), 500);
     FX.toast(p.line);
-    bump(p.total);
+    bump();
   });
   socket.on('react', (r) => FX.floatEmoji(r.emoji, { size: 40 }));
   socket.on('started', () => { FX.play('start.mp3', 0.8); FX.shower(['🚀', '💖', '🗳️'], 16, 1200); });
@@ -105,11 +111,11 @@ async function init() {
   socket.on('reset', () => { revealedShown = false; FX.toast('Reset done 🔄'); });
 }
 
-function bump(total) {
-  const el = $('count');
-  el.textContent = total;
+// a vote came in – wiggle the ballot box, never show how many (the screen is on the projector)
+function bump() {
+  const el = $('voteBox');
+  if (!el) return;
   el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
-  lastTotal = total;
 }
 
 function optionsPreview() {
@@ -124,16 +130,16 @@ function controls(html) { $('controls').innerHTML = html; }
 function render() {
   clearInterval(tick);
   const s = state;
-  if (s.total !== lastTotal) bump(s.total);
   const timer = $('timer');
   timer.classList.remove('hurry');
+  $('activity').innerHTML = s.status === 'voting' ? '🗳️ Votes එනවා<span class="dots"><span>.</span><span>.</span><span>.</span></span>' : '';
 
   if (s.status === 'idle') {
     timer.textContent = '3:00';
     $('main').innerHTML = optionsPreview();
     controls(`<button class="btn huge" onclick="socket.emit('start')">Start voting 🚀</button>`);
   } else if (s.status === 'voting') {
-    $('main').innerHTML = optionsPreview();
+    $('main').innerHTML = `<div class="card center live-votes"><span class="box" id="voteBox">🗳️</span><h2>Votes එනවා<span class="dots"><span>.</span><span>.</span><span>.</span></span></h2><div class="muted">Scan කරලා vote කරන්න 📱 · Results secret 🤫</div></div><div class="spacer"></div>` + optionsPreview();
     const update = () => {
       const left = s.endsAt - (Date.now() + offset);
       timer.textContent = FX.fmt(left);
@@ -141,10 +147,10 @@ function render() {
     };
     update(); tick = setInterval(update, 250);
     controls(`<span class="pill">🤫 Results hidden until reveal</span>
-      <button class="btn small ghost" onclick="if(confirm('Voting දැන්ම නවත්තන්නද?')) socket.emit('end')">End now ⏹️</button>`);
+      <button class="btn small ghost" onclick="if(confirm('Voting දැන්ම නවත්තන්නද?')) socket.emit('end')">Stop vote ⏹️</button>`);
   } else if (s.status === 'ended') {
     timer.textContent = '0:00';
-    $('main').innerHTML = `<div class="card center"><div style="font-size:80px">🥁</div><h2>Voting closed!</h2><p class="muted">${s.total} votes ආවා. Ready නම් reveal කරන්න 👇</p></div><div class="spacer"></div>` + optionsPreview();
+    $('main').innerHTML = `<div class="card center"><div style="font-size:80px">🥁</div><h2>Voting closed!</h2><p class="muted">Ready නම් reveal කරන්න 👇</p></div><div class="spacer"></div>` + optionsPreview();
     controls(`<button class="btn huge" id="revealBtn">Reveal answer 🥁</button>`);
     $('revealBtn').onclick = () => {
       $('revealBtn').disabled = true;
