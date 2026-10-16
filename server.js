@@ -13,8 +13,10 @@ const VOTE_MS = (Number(process.env.VOTE_SECONDS) || 180) * 1000;
 const DATA_FILE = path.join(__dirname, 'data.json');
 
 // ---------- persistence ----------
+// Votes never reach the server: phones only keep their choice locally, the result is
+// decided in questions.js. The server just runs the timer and tells every screen what to show.
 function freshQuestionState() {
-  return { status: 'idle', endsAt: null, votes: {}, shown: null };
+  return { status: 'idle', endsAt: null, shown: null };
 }
 let db = { adminKey: crypto.randomBytes(3).toString('hex'), q: {} };
 try { db = { ...db, ...JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) }; } catch {}
@@ -28,14 +30,6 @@ function save() {
 }
 
 // ---------- helpers ----------
-function parseCookies(str = '') {
-  const out = {};
-  for (const part of str.split(';')) {
-    const i = part.indexOf('=');
-    if (i > 0) try { out[part.slice(0, i).trim()] = decodeURIComponent(part.slice(i + 1).trim()); } catch {}
-  }
-  return out;
-}
 function lanIp() {
   if (process.env.LAN_IP) return process.env.LAN_IP;
   // prefer the real Wi-Fi / Ethernet adapter over VPN, WSL and virtual adapters
@@ -48,27 +42,13 @@ function lanIp() {
 const BASE_URL = (process.env.PUBLIC_URL || `http://${lanIp()}:${PORT}`).replace(/\/$/, '');
 const voteUrl = (id) => `${BASE_URL}/v/${id}`;
 const findQ = (id) => QUESTIONS.find((q) => q.id === id);
-const rand = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 // Public view of a question – never includes `winner`.
 function publicQuestion(q) {
   return {
     id: q.id, title: q.title, prompt: q.prompt, type: q.type,
-    options: q.options, emojis: q.emojis, url: voteUrl(q.id),
+    options: q.options, emojis: q.emojis, lines: q.lines, url: voteUrl(q.id),
   };
-}
-
-function counts(q) {
-  const c = q.options.map(() => 0);
-  const seen = new Set();
-  for (const [id, v] of Object.entries(db.q[q.id].votes)) {
-    // a vote is stored under both the cookie id and the localStorage id – count once
-    const key = v.voteId;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    c[v.option]++;
-  }
-  return c;
 }
 
 // Made-up percentages (summing to 100): the configured winner gets a clear lead,
@@ -94,15 +74,10 @@ function fakePercents(q) {
   return out;
 }
 
-function stateFor(qid, deviceIds = []) {
+function stateFor(qid) {
   const q = findQ(qid);
   const s = db.q[qid];
-  const total = counts(q).reduce((a, b) => a + b, 0);
-  const mine = deviceIds.map((d) => s.votes[d]).find(Boolean);
-  const out = {
-    q: qid, status: s.status, endsAt: s.endsAt, now: Date.now(), total,
-    voted: !!mine, myOption: mine ? mine.option : null,
-  };
+  const out = { q: qid, status: s.status, endsAt: s.endsAt, now: Date.now() };
   if (s.status === 'revealed') {
     out.results = s.shown;
     out.winner = q.winner;
@@ -115,13 +90,6 @@ function stateFor(qid, deviceIds = []) {
 
 // ---------- http ----------
 const app = express();
-app.use((req, res, next) => {
-  const c = parseCookies(req.headers.cookie || '');
-  if (!c.bvid) {
-    res.setHeader('Set-Cookie', `bvid=${crypto.randomUUID()}; Max-Age=31536000; Path=/; SameSite=Lax`);
-  }
-  next();
-});
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/api/questions', (req, res) => res.json({ base: BASE_URL, questions: QUESTIONS.map(publicQuestion) }));
@@ -147,10 +115,7 @@ const io = new Server(server);
 const endTimers = {};
 
 function broadcastState(qid) {
-  // voters each get their own `voted` flag
-  for (const [, sock] of io.of('/').sockets) {
-    if (sock.data.qid === qid) sock.emit('state', stateFor(qid, sock.data.ids));
-  }
+  io.to(qid).emit('state', stateFor(qid));
 }
 
 function scheduleEnd(qid) {
@@ -179,46 +144,14 @@ function reveal(qid) {
 for (const q of QUESTIONS) scheduleEnd(q.id); // resume timers after a restart
 
 io.on('connection', (sock) => {
-  const { q: qid, role, key, lsid } = sock.handshake.auth || {};
-  const q = findQ(qid);
-  if (!q) return sock.disconnect();
-  const c = parseCookies(sock.handshake.headers.cookie || '');
-  sock.data.qid = qid;
-  sock.data.ids = [c.bvid, lsid].filter((x) => typeof x === 'string' && x.length >= 8 && x.length <= 64);
+  const { q: qid, role, key } = sock.handshake.auth || {};
+  if (!findQ(qid)) return sock.disconnect();
   sock.data.host = role === 'host' && key === db.adminKey;
   sock.join(qid);
-  sock.emit('state', stateFor(qid, sock.data.ids));
+  sock.emit('state', stateFor(qid));
   if (role === 'host' && !sock.data.host) sock.emit('badkey');
 
-  sock.on('vote', (option, ack = () => {}) => {
-    const s = db.q[qid];
-    if (s.status !== 'voting') return ack({ ok: false, reason: 'closed' });
-    if (!Number.isInteger(option) || option < 0 || option >= q.options.length) return ack({ ok: false, reason: 'bad' });
-    if (!sock.data.ids.length) return ack({ ok: false, reason: 'nocookie' });
-    if (sock.data.ids.some((d) => s.votes[d])) return ack({ ok: false, reason: 'already' });
-    const record = { option, voteId: sock.data.ids[0], at: Date.now() };
-    for (const d of sock.data.ids) s.votes[d] = record;
-    save();
-    const total = counts(q).reduce((a, b) => a + b, 0);
-    ack({ ok: true });
-    io.to(qid).emit('pop', { emoji: rand(q.emojis), line: rand(q.lines), total });
-    // keep any other tabs on this same device in sync
-    for (const [, other] of io.of('/').sockets) {
-      if (other.data.qid === qid && other.data.ids.some((d) => sock.data.ids.includes(d))) {
-        other.emit('state', stateFor(qid, other.data.ids));
-      }
-    }
-  });
-
-  // reactions from people who already voted – pure fun, no effect on results
-  sock.on('react', (emoji) => {
-    if (typeof emoji !== 'string' || emoji.length > 16) return;
-    const now = Date.now();
-    if (now - (sock.data.lastReact || 0) < 400) return;
-    sock.data.lastReact = now;
-    io.to(qid).emit('react', { emoji });
-  });
-
+  // voters only listen – nothing they send is handled (no votes, no reactions)
   const hostOnly = (fn) => (...args) => { if (sock.data.host) fn(...args); };
   sock.on('start', hostOnly(() => {
     const s = db.q[qid];

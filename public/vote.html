@@ -38,13 +38,17 @@ const qid = location.pathname.split('/').pop();
 const $ = (id) => document.getElementById(id);
 let question, state, selected = null, offset = 0, tick, revealedShown = false;
 
-// device id: cookie + localStorage so clearing one isn't enough to vote twice
-function deviceId() {
-  const ck = (document.cookie.match(/(?:^|; )bvid=([^;]+)/) || [])[1];
-  let ls = null;
-  try { ls = localStorage.getItem('bvid'); } catch {}
-  if (!ls) { ls = ck || (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()); try { localStorage.setItem('bvid', ls); } catch {} }
-  return ls;
+// Votes stay on this phone – they are never sent to the server. A vote belongs to one
+// voting round (identified by its end time), so a reset or a new round starts fresh.
+let localVote = null;
+const VOTE_KEY = 'bv_vote_' + qid;
+function myVote(s) {
+  if (!localVote) { try { localVote = JSON.parse(localStorage.getItem(VOTE_KEY)); } catch {} }
+  return localVote && s && localVote.round === s.endsAt ? localVote.option : null;
+}
+function saveVote(s, option) {
+  localVote = { round: s.endsAt, option };
+  try { localStorage.setItem(VOTE_KEY, JSON.stringify(localVote)); } catch {}
 }
 
 const WAIT_LINES = ['Host තාම start කරලා නෑ ⏳', 'Popcorn අරන් එන්න 🍿', 'Ready වෙලා ඉන්න… 👀'];
@@ -59,18 +63,13 @@ async function init() {
   $('reacts').innerHTML = question.emojis.slice(0, 6).map((e) => `<button class="btn ghost small" data-e="${e}" style="font-size:24px;padding:8px 14px">${e}</button>`).join('');
   $('reacts').onclick = (e) => {
     const b = e.target.closest('button'); if (!b) return;
-    socket.emit('react', b.dataset.e);
+    // reactions are local only – nothing goes to the server
     const r = b.getBoundingClientRect(); FX.burst(r.left + r.width / 2, r.top, [b.dataset.e], 6);
+    FX.floatEmoji(b.dataset.e, { size: 34 });
   };
 
-  window.socket = io({ auth: { q: qid, role: 'voter', lsid: deviceId() } });
+  window.socket = io({ auth: { q: qid, role: 'voter' } });
   socket.on('state', (s) => { offset = s.now - Date.now(); state = s; render(); });
-  socket.on('pop', (p) => {
-    FX.bubbles(4 + Math.floor(Math.random() * 4));
-    FX.shower([p.emoji, ...question.emojis], 3, 400);
-    FX.toast(p.line);
-  });
-  socket.on('react', (r) => FX.floatEmoji(r.emoji, { size: 34 }));
   socket.on('started', () => { FX.play('start.mp3', 0.7); FX.toast('Voting started! 🚀 විනාඩි 3යි!'); });
   socket.on('ended', () => { FX.play('end.mp3', 0.8); FX.toast('Time\'s up! ⏰ Reveal එකට wait කරන්න 🥁'); });
   socket.on('drumroll', () => {
@@ -99,22 +98,13 @@ function renderOptions() {
 }
 
 $('voteBtn').onclick = () => {
-  if (selected == null) return;
-  $('voteBtn').disabled = true;
-  socket.emit('vote', selected, (res) => {
-    const r = $('voteBtn').getBoundingClientRect();
-    if (res.ok) {
-      FX.play('voted.mp3', 0.8);
-      FX.burst(r.left + r.width / 2, r.top + r.height / 2, ['💖', '🎉', '✨', ...question.emojis], 14);
-    } else if (res.reason === 'already') {
-      FX.play('already.mp3'); FX.toast('ඔයා දැනටමත් vote කරලා 😤 එක පාරයි!');
-    } else if (res.reason === 'closed') {
-      FX.toast('Voting closed 🔒');
-    } else {
-      FX.toast('Vote එක යැව්වේ නෑ 😵 Refresh කරලා බලන්න');
-      $('voteBtn').disabled = false;
-    }
-  });
+  if (selected == null || !state || state.status !== 'voting') return;
+  if (myVote(state) != null) { FX.play('already.mp3'); FX.toast('ඔයා දැනටමත් vote කරලා 😤 එක පාරයි!'); return; }
+  const r = $('voteBtn').getBoundingClientRect();
+  saveVote(state, selected);
+  FX.play('voted.mp3', 0.8);
+  FX.burst(r.left + r.width / 2, r.top + r.height / 2, ['💖', '🎉', '✨', ...question.emojis], 14);
+  render();
 };
 
 function render() {
@@ -129,19 +119,21 @@ function render() {
     st.innerHTML = `<div style="font-size:54px">⏳</div><h3>${WAIT_LINES[Math.floor(Math.random() * WAIT_LINES.length)]}</h3><div class="muted">Voting පටන් ගත්තම මෙතන options පේනවා</div>`;
     $('results').innerHTML = '';
   } else if (s.status === 'voting') {
-    const mine = s.voted ? question.options[s.myOption] : null;
+    const myOption = myVote(s);
+    const voted = myOption != null;
+    const mine = voted ? question.options[myOption] : null;
     const update = () => {
       const left = s.endsAt - (Date.now() + offset);
-      st.innerHTML = s.voted
+      st.innerHTML = voted
         ? `<div style="font-size:54px">✅</div><h3>Vote එක දැම්මා!</h3>
            <div class="pill" style="margin:10px 0">ඔයා තේරුවේ: ${mine ? FX.esc(mine.label) : ''}</div>
            <div class="muted">Results secret 🤫 · ${FX.fmt(left)} ඉතුරුයි · Big screen එකේ reveal එක බලාගෙන ඉන්න 👀</div>`
         : `<h3>⏱️ ${FX.fmt(left)} ඉතුරුයි</h3><div class="muted">එකක් තෝරලා Vote කරන්න 👇</div>`;
     };
     update(); tick = setInterval(update, 500);
-    if (s.voted) {
+    if (voted) {
       // vote done – hide the options so the phone just shows the confirmation
-      selected = s.myOption;
+      selected = myOption;
       $('reactBar').classList.remove('hidden');
     } else {
       $('voteArea').classList.remove('hidden');
