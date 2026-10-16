@@ -22,6 +22,8 @@
   .dots span { display: inline-block; animation: bob 1s ease-in-out infinite; }
   .dots span:nth-child(2) { animation-delay: .15s; }
   .dots span:nth-child(3) { animation-delay: .3s; }
+  .next-fab { position: fixed; right: 24px; bottom: 24px; z-index: 70; text-decoration: none; animation: zoomIn .5s cubic-bezier(.2,1.6,.4,1) 1.5s both; }
+  #main:has(.next-fab) { padding-bottom: 90px; }
   #suspense { font-size: clamp(60px, 14vw, 140px); text-align: center; animation: shake .35s infinite; }
 </style>
 </head>
@@ -164,6 +166,10 @@ function render() {
     if (!revealedShown) { revealedShown = true; FX.revealShow(s); }
     const i = all.findIndex((q) => q.id === qid);
     const next = all[i + 1];
+    // always-visible button on the results screen so the host can move on whenever they want
+    $('main').insertAdjacentHTML('beforeend', next
+      ? `<a class="btn huge next-fab" href="/host/${next.id}${key ? '?key=' + encodeURIComponent(key) : ''}">Next question ➡️</a>`
+      : `<span class="btn huge next-fab" style="cursor:default">That's all folks 🎀</span>`);
     controls(`${next ? `<a class="btn" href="/host/${next.id}">Next question ➡️</a>` : `<span class="pill">That's all folks 🎀</span>`}
       <button class="btn small ghost" onclick="if(confirm('මේ question එකේ votes ඔක්කොම මකන්නද?')) socket.emit('reset')">Reset 🔄</button>`);
   }
