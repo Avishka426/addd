@@ -11,7 +11,7 @@
 </head>
 <body>
 <div class="wrap">
-  <span class="brand">💖 Beast Vote</span>
+  <span class="brand">Beast Vote</span>
   <h1 class="title" id="title">…</h1>
   <p class="prompt" id="prompt"></p>
 
@@ -20,11 +20,11 @@
   <div id="voteArea" class="hidden">
     <div id="opts" class="opts"></div>
     <div class="spacer"></div>
-    <div class="center"><button id="voteBtn" class="btn huge" disabled>Vote දාන්න 🗳️</button></div>
+    <div class="center"><button id="voteBtn" class="btn huge" disabled>Vote දාන්න</button></div>
   </div>
 
   <div id="reactBar" class="card center hidden" style="margin-top:16px">
-    <div class="muted" style="margin-bottom:8px">Spam some reactions while you wait 👇</div>
+    <div class="muted" style="margin-bottom:8px">Spam some reactions while you wait</div>
     <div class="row-gap" id="reacts"></div>
   </div>
 
@@ -51,11 +51,11 @@ function saveVote(s, option) {
   try { localStorage.setItem(VOTE_KEY, JSON.stringify(localVote)); } catch {}
 }
 
-const WAIT_LINES = ['Host තාම start කරලා නෑ ⏳', 'Popcorn අරන් එන්න 🍿', 'Ready වෙලා ඉන්න… 👀'];
+const WAIT_LINES = ['Host තාම start කරලා නෑ', 'Popcorn අරන් එන්න', 'Ready වෙලා ඉන්න…'];
 
 async function init() {
   question = await (await fetch('/api/questions/' + qid)).json();
-  if (question.error) { $('title').textContent = 'Question not found 😵'; return; }
+  if (question.error) { $('title').textContent = 'Question not found'; return; }
   document.title = question.title + ' · Beast Vote';
   $('title').textContent = question.title;
   $('prompt').textContent = question.prompt;
@@ -70,12 +70,11 @@ async function init() {
 
   window.socket = io({ auth: { q: qid, role: 'voter' } });
   socket.on('state', (s) => { offset = s.now - Date.now(); state = s; render(); });
-  socket.on('started', () => { FX.play('start.mp3', 0.7); FX.toast('Voting started! 🚀 විනාඩි 3යි!'); });
-  socket.on('ended', () => { FX.play('end.mp3', 0.8); FX.toast('Time\'s up! ⏰ Reveal එකට wait කරන්න 🥁'); });
+  socket.on('started', () => { FX.play('start.mp3', 0.7); FX.toast('Voting started! විනාඩි 3යි!'); });
+  socket.on('ended', () => { FX.play('end.mp3', 0.8); FX.toast('Time\'s up! Reveal එකට wait කරන්න'); });
   socket.on('drumroll', () => {
     window.drum = FX.play('drumroll.mp3', 0.8);
-    $('status').innerHTML = `<div style="font-size:64px;animation:shake .4s infinite">🥁</div><h3>Revealing…</h3>`;
-    FX.shower(['🥁', '😱', '👀', '🤞'], 14, 2500);
+    $('status').innerHTML = `<h3 style="animation:shake .4s infinite">Revealing…</h3>`;
   });
   socket.on('reset', () => { selected = null; revealedShown = false; $('results').innerHTML = ''; renderOptions(); });
 }
@@ -99,11 +98,9 @@ function renderOptions() {
 
 $('voteBtn').onclick = () => {
   if (selected == null || !state || state.status !== 'voting') return;
-  if (myVote(state) != null) { FX.play('already.mp3'); FX.toast('ඔයා දැනටමත් vote කරලා 😤 එක පාරයි!'); return; }
-  const r = $('voteBtn').getBoundingClientRect();
+  if (myVote(state) != null) { FX.play('already.mp3'); FX.toast('ඔයා දැනටමත් vote කරලා – එක පාරයි!'); return; }
   saveVote(state, selected);
   FX.play('voted.mp3', 0.8);
-  FX.burst(r.left + r.width / 2, r.top + r.height / 2, ['💖', '🎉', '✨', ...question.emojis], 14);
   render();
 };
 
@@ -116,7 +113,7 @@ function render() {
   $('reactBar').classList.add('hidden');
 
   if (s.status === 'idle') {
-    st.innerHTML = `<div style="font-size:54px">⏳</div><h3>${WAIT_LINES[Math.floor(Math.random() * WAIT_LINES.length)]}</h3><div class="muted">Voting පටන් ගත්තම මෙතන options පේනවා</div>`;
+    st.innerHTML = `<h3>${WAIT_LINES[Math.floor(Math.random() * WAIT_LINES.length)]}</h3><div class="muted">Voting පටන් ගත්තම මෙතන options පේනවා</div>`;
     $('results').innerHTML = '';
   } else if (s.status === 'voting') {
     const myOption = myVote(s);
@@ -125,10 +122,10 @@ function render() {
     const update = () => {
       const left = s.endsAt - (Date.now() + offset);
       st.innerHTML = voted
-        ? `<div style="font-size:54px">✅</div><h3>Vote එක දැම්මා!</h3>
+        ? `<h3>Vote එක දැම්මා!</h3>
            <div class="pill" style="margin:10px 0">ඔයා තේරුවේ: ${mine ? FX.esc(mine.label) : ''}</div>
-           <div class="muted">Results secret 🤫 · ${FX.fmt(left)} ඉතුරුයි · Big screen එකේ reveal එක බලාගෙන ඉන්න 👀</div>`
-        : `<h3>⏱️ ${FX.fmt(left)} ඉතුරුයි</h3><div class="muted">එකක් තෝරලා Vote කරන්න 👇</div>`;
+           <div class="muted">Results secret · ${FX.fmt(left)} ඉතුරුයි · Big screen එකේ reveal එක බලාගෙන ඉන්න</div>`
+        : `<h3>${FX.fmt(left)} ඉතුරුයි</h3><div class="muted">එකක් තෝරලා Vote කරන්න</div>`;
     };
     update(); tick = setInterval(update, 500);
     if (voted) {
@@ -141,11 +138,11 @@ function render() {
       $('voteBtn').classList.remove('hidden');
     }
   } else if (s.status === 'ended') {
-    st.innerHTML = `<div style="font-size:54px">🥁</div><h3>Voting ඉවරයි!</h3><div class="muted">Big screen එකේ reveal එක බලාගෙන ඉන්න 👀</div>`;
+    st.innerHTML = `<h3>Voting ඉවරයි!</h3><div class="muted">Big screen එකේ reveal එක බලාගෙන ඉන්න</div>`;
     $('reactBar').classList.remove('hidden');
   } else if (s.status === 'revealed') {
     if (window.drum) window.drum.pause();
-    st.innerHTML = `<h3>🎉 Results 🎉</h3>`;
+    st.innerHTML = `<h3>Results</h3>`;
     FX.renderResults($('results'), question, s);
     if (!revealedShown) { revealedShown = true; FX.revealShow(s); }
   }

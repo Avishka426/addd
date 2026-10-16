@@ -16,7 +16,7 @@
   .nav { display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; align-items: center; }
   .nav a { text-decoration: none; }
   .opts.image { gap: 10px; }
-  .live-votes .box { display: inline-block; font-size: clamp(64px, 12vw, 130px); line-height: 1.1; }
+  .live-votes .box { display: inline-block; font-size: clamp(40px, 6vw, 72px); line-height: 1.2; }
   .live-votes .box.bump { animation: pop .35s ease; }
   .live-votes h2 { color: var(--pink-700); }
   .dots span { display: inline-block; animation: bob 1s ease-in-out infinite; }
@@ -24,22 +24,21 @@
   .dots span:nth-child(3) { animation-delay: .3s; }
   .next-fab { position: fixed; right: 24px; bottom: 24px; z-index: 70; text-decoration: none; animation: zoomIn .5s cubic-bezier(.2,1.6,.4,1) 1.5s both; }
   #main:has(.next-fab) { padding-bottom: 90px; }
-  #suspense { font-size: clamp(60px, 14vw, 140px); text-align: center; animation: shake .35s infinite; }
+  #suspense { font-size: clamp(36px, 6vw, 72px); font-weight: 800; color: var(--pink-700); text-align: center; padding: 40px 0; animation: shake .35s infinite; }
 </style>
 </head>
 <body>
 <div class="sound-gate" id="gate">
   <div>
-    <div class="big">🔊</div>
     <h2 style="color:var(--pink-700);margin:10px 0">Sound on කරන්න tap කරන්න</h2>
-    <p class="muted">Browser එකට sound play කරන්න permission ඕන 💅</p>
-    <button class="btn huge" id="gateBtn">Let's go 💖</button>
+    <p class="muted">Browser එකට sound play කරන්න permission ඕන</p>
+    <button class="btn huge" id="gateBtn">Let's go</button>
   </div>
 </div>
 
 <div class="wrap wide">
   <div class="nav">
-    <span class="brand">💖 Beast Vote · Host</span>
+    <span class="brand">Beast Vote · Host</span>
     <div class="row-gap" id="qnav"></div>
   </div>
   <h1 class="title" id="title">…</h1>
@@ -50,7 +49,7 @@
       <div class="card qr center">
         <img id="qr" alt="QR code">
         <div class="spacer"></div>
-        <div class="muted">Scan කරලා vote කරන්න 📱</div>
+        <div class="muted">Scan කරලා vote කරන්න</div>
         <a id="link" target="_blank"></a>
       </div>
       <div class="spacer"></div>
@@ -83,7 +82,7 @@ async function init() {
   const info = await (await fetch('/api/questions')).json();
   all = info.questions;
   question = all.find((q) => q.id === qid);
-  if (!question) { $('title').textContent = 'Question not found 😵'; return; }
+  if (!question) { $('title').textContent = 'Question not found'; return; }
   document.title = question.title + ' · Host';
   $('title').textContent = question.title;
   $('prompt').textContent = question.prompt;
@@ -94,16 +93,15 @@ async function init() {
     `<a class="btn small ghost" href="/" target="_blank">All QR</a>`;
 
   window.socket = io({ auth: { q: qid, role: 'host', key } });
-  socket.on('badkey', () => FX.toast('⚠️ Admin key වැරදියි – buttons වැඩ කරන්නේ නෑ. Terminal එකේ host link එක use කරන්න.'));
+  socket.on('badkey', () => FX.toast('Admin key වැරදියි – buttons වැඩ කරන්නේ නෑ. Terminal එකේ host link එක use කරන්න.'));
   socket.on('state', (s) => { offset = s.now - Date.now(); state = s; render(); });
-  socket.on('started', () => { FX.play('start.mp3', 0.8); FX.shower(['🚀', '💖', '🗳️'], 16, 1200); });
-  socket.on('ended', () => { FX.play('end.mp3', 0.9); FX.shower(['⏰', '🛑', '🥁'], 14, 1000); });
+  socket.on('started', () => FX.play('start.mp3', 0.8));
+  socket.on('ended', () => FX.play('end.mp3', 0.9));
   socket.on('drumroll', () => {
     drum = FX.play('drumroll.mp3', 0.9);
-    $('main').innerHTML = '<div class="card"><div id="suspense">🥁</div><h2 class="center">And the winner is…</h2></div>';
-    FX.shower(['🥁', '😱', '👀', '🤞'], 20, 3000);
+    $('main').innerHTML = '<div class="card"><div id="suspense">And the winner is…</div></div>';
   });
-  socket.on('reset', () => { revealedShown = false; FX.toast('Reset done 🔄'); });
+  socket.on('reset', () => { revealedShown = false; FX.toast('Reset done'); });
 }
 
 // wiggle the ballot box, never show how many (the screen is on the projector)
@@ -114,7 +112,7 @@ function bump() {
 }
 
 // Votes never reach the server, so the "votes are coming in" buzz is made up here:
-// at random moments the box bumps, emojis fly and a fun line pops up.
+// at random moments the heading bumps, a bubble sound plays and a fun line pops up.
 let fakeTimer = null;
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 function fakeActivity(on) {
@@ -122,7 +120,6 @@ function fakeActivity(on) {
   if (!on) return;
   const pop = () => {
     FX.bubbles(4 + Math.floor(Math.random() * 4));
-    FX.shower([pick(question.emojis), ...question.emojis], 3 + Math.floor(Math.random() * 4), 500);
     if (question.lines && question.lines.length && Math.random() < 0.6) FX.toast(pick(question.lines));
     bump();
     fakeTimer = setTimeout(pop, 1200 + Math.random() * 2600);
@@ -145,26 +142,26 @@ function render() {
   const timer = $('timer');
   timer.classList.remove('hurry');
   fakeActivity(s.status === 'voting');
-  $('activity').innerHTML = s.status === 'voting' ? '🗳️ Votes එනවා<span class="dots"><span>.</span><span>.</span><span>.</span></span>' : '';
+  $('activity').innerHTML = s.status === 'voting' ? 'Votes එනවා<span class="dots"><span>.</span><span>.</span><span>.</span></span>' : '';
 
   if (s.status === 'idle') {
     timer.textContent = '3:00';
     $('main').innerHTML = optionsPreview();
-    controls(`<button class="btn huge" onclick="socket.emit('start')">Start voting 🚀</button>`);
+    controls(`<button class="btn huge" onclick="socket.emit('start')">Start voting</button>`);
   } else if (s.status === 'voting') {
-    $('main').innerHTML = `<div class="card center live-votes"><span class="box" id="voteBox">🗳️</span><h2>Votes එනවා<span class="dots"><span>.</span><span>.</span><span>.</span></span></h2><div class="muted">Scan කරලා vote කරන්න 📱 · Results secret 🤫</div></div><div class="spacer"></div>` + optionsPreview();
+    $('main').innerHTML = `<div class="card center live-votes"><h2 class="box" id="voteBox">Votes එනවා<span class="dots"><span>.</span><span>.</span><span>.</span></span></h2><div class="muted">Scan කරලා vote කරන්න · Results secret</div></div><div class="spacer"></div>` + optionsPreview();
     const update = () => {
       const left = s.endsAt - (Date.now() + offset);
       timer.textContent = FX.fmt(left);
       timer.classList.toggle('hurry', left < 15000);
     };
     update(); tick = setInterval(update, 250);
-    controls(`<span class="pill">🤫 Results hidden until reveal</span>
-      <button class="btn small ghost" onclick="if(confirm('Voting දැන්ම නවත්තන්නද?')) socket.emit('end')">Stop vote ⏹️</button>`);
+    controls(`<span class="pill">Results hidden until reveal</span>
+      <button class="btn small ghost" onclick="if(confirm('Voting දැන්ම නවත්තන්නද?')) socket.emit('end')">Stop vote</button>`);
   } else if (s.status === 'ended') {
     timer.textContent = '0:00';
-    $('main').innerHTML = `<div class="card center"><div style="font-size:80px">🥁</div><h2>Voting closed!</h2><p class="muted">Ready නම් reveal කරන්න 👇</p></div><div class="spacer"></div>` + optionsPreview();
-    controls(`<button class="btn huge" id="revealBtn">Reveal answer 🥁</button>`);
+    $('main').innerHTML = `<div class="card center"><h2>Voting closed!</h2><p class="muted">Ready නම් reveal කරන්න</p></div><div class="spacer"></div>` + optionsPreview();
+    controls(`<button class="btn huge" id="revealBtn">Reveal answer</button>`);
     $('revealBtn').onclick = () => {
       $('revealBtn').disabled = true;
       socket.emit('drumroll');
@@ -172,17 +169,17 @@ function render() {
     };
   } else if (s.status === 'revealed') {
     if (drum) { drum.pause(); drum = null; }
-    timer.textContent = '🎉';
+    timer.textContent = '0:00';
     FX.renderResults($('main'), question, s);
     if (!revealedShown) { revealedShown = true; FX.revealShow(s); }
     const i = all.findIndex((q) => q.id === qid);
     const next = all[i + 1];
     // always-visible button on the results screen so the host can move on whenever they want
     $('main').insertAdjacentHTML('beforeend', next
-      ? `<a class="btn huge next-fab" href="/host/${next.id}${key ? '?key=' + encodeURIComponent(key) : ''}">Next question ➡️</a>`
-      : `<span class="btn huge next-fab" style="cursor:default">That's all folks 🎀</span>`);
-    controls(`${next ? `<a class="btn" href="/host/${next.id}">Next question ➡️</a>` : `<span class="pill">That's all folks 🎀</span>`}
-      <button class="btn small ghost" onclick="if(confirm('මේ question එකේ votes ඔක්කොම මකන්නද?')) socket.emit('reset')">Reset 🔄</button>`);
+      ? `<a class="btn huge next-fab" href="/host/${next.id}${key ? '?key=' + encodeURIComponent(key) : ''}">Next question</a>`
+      : `<span class="btn huge next-fab" style="cursor:default">That's all folks</span>`);
+    controls(`${next ? `<a class="btn" href="/host/${next.id}">Next question</a>` : `<span class="pill">That's all folks</span>`}
+      <button class="btn small ghost" onclick="if(confirm('මේ question එකේ votes ඔක්කොම මකන්නද?')) socket.emit('reset')">Reset</button>`);
   }
 }
 

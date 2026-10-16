@@ -83,7 +83,6 @@ function stateFor(qid) {
     out.winner = q.winner;
     out.revealLine = q.revealLine;
     out.revealSounds = q.revealSounds;
-    out.revealEmojis = q.revealEmojis;
   }
   return out;
 }

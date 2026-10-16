@@ -73,10 +73,6 @@ h1, h2, h3 { margin: 0; line-height: 1.15; }
 .opt .avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex-shrink: 0; box-shadow: 0 0 0 3px var(--pink-200); }
 .opt:active { transform: scale(.97); }
 .opt.sel { border-color: var(--pink-500); background: var(--pink-100); transform: scale(1.02); }
-.opt.sel::after {
-  content: '💖'; position: absolute; top: -10px; right: -8px; font-size: 26px;
-  animation: pop .3s ease;
-}
 .opts.image .opt { flex-direction: column; padding: 0; overflow: hidden; gap: 0; border-radius: 14px; }
 .opts.image .opt img { width: 100%; aspect-ratio: 1 / 1.05; object-fit: cover; display: block; }
 .opts.image .opt span { font-size: clamp(11px, 3vw, 15px); padding: 6px 6px 8px; text-align: center; line-height: 1.15; font-family: 'Baloo 2', sans-serif; width: 100%; }

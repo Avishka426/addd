@@ -121,8 +121,7 @@ const FX = (() => {
     const order = question.options.map((o, i) => i).sort((a, b) => state.results[b] - state.results[a]);
     container.innerHTML = `
       <div class="card winner-card">
-        <span class="crown">👑</span>
-        ${w.img ? `<img src="${w.img}" alt="">` : `<div style="font-size:90px">${w.emoji || '🏆'}</div>`}
+        ${w.img ? `<img src="${w.img}" alt="">` : w.emoji ? `<div style="font-size:90px">${w.emoji}</div>` : ''}
         <div class="name">${esc(w.label)}</div>
         <div class="line">${esc(state.revealLine)}</div>
       </div>
@@ -133,7 +132,7 @@ const FX = (() => {
           <div class="bar" data-w="${pct}"></div>
           <div class="row">
             ${o.img ? `<img src="${o.img}" alt="">` : `<span>${o.emoji || ''}</span>`}
-            <span class="lbl">${esc(o.label)}${i === state.winner ? ' 👑' : ''}</span>
+            <span class="lbl">${esc(o.label)}</span>
             <span class="pct">${pct}%</span>
           </div></div>`;
       }).join('')}`;
@@ -143,10 +142,8 @@ const FX = (() => {
   }
 
   async function revealShow(state) {
-    shower(state.revealEmojis, 40, 2500);
     for (const s of state.revealSounds) await playAndWait(s, 1, 5000);
     play('laugh.mp3', 0.6);
-    shower(state.revealEmojis, 20, 1500);
   }
 
   function fmt(ms) {
