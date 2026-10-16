@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="si">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#ff2e93">
+<title>Beast Vote QR Codes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Noto+Sans+Sinhala:wght@500;700;800&display=swap">
+<link rel="stylesheet" href="/style.css">
+<style>
+  .sheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; margin-top: 18px; }
+  .sheet .card { text-align: center; }
+  .sheet img { width: 100%; max-width: 240px; border-radius: 14px; }
+  .sheet a { word-break: break-all; color: var(--pink-700); font-weight: 700; font-size: 14px; }
+  .sheet .qn { font-size: 22px; font-weight: 800; color: var(--pink-600); }
+  .sheet .p { font-family: 'Noto Sans Sinhala', sans-serif; font-weight: 700; margin: 4px 0 10px; min-height: 2.6em; }
+  @media print { body { background: #fff; } .noprint { display: none; } .card { box-shadow: none; border: 2px solid var(--pink-300); break-inside: avoid; } }
+</style>
+</head>
+<body>
+<div class="wrap wide">
+  <span class="brand">💖 Beast Vote</span>
+  <h1 class="title">Scan කරලා vote කරන්න 📱</h1>
+  <p class="noprint muted">Each QR opens the voting page for that question. <button class="btn small ghost" onclick="print()">Print 🖨️</button></p>
+  <div class="sheet" id="sheet"></div>
+</div>
+<script>
+fetch('/api/questions').then((r) => r.json()).then(({ questions }) => {
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  document.getElementById('sheet').innerHTML = questions.map((q, i) => `
+    <div class="card">
+      <div class="qn">Q${i + 1} · ${esc(q.title)}</div>
+      <div class="p">${esc(q.prompt)}</div>
+      <img src="/qr/${q.id}.png" alt="QR for ${esc(q.title)}">
+      <div><a href="${q.url}" target="_blank">${q.url}</a></div>
+    </div>`).join('');
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="si">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ff2e93">
+<title>Beast Vote Host</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Noto+Sans+Sinhala:wght@500;700;800&display=swap">
+<link rel="stylesheet" href="/style.css">
+<style>
+  .grid { display: grid; grid-template-columns: 340px 1fr; gap: 24px; align-items: start; margin-top: 16px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .qr img { width: 100%; max-width: 300px; border-radius: 16px; display: block; margin: 0 auto; }
+  .qr a { word-break: break-all; color: var(--pink-700); font-weight: 700; font-size: 14px; }
+  .nav { display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+  .nav a { text-decoration: none; }
+  .opts.image { gap: 10px; }
+  #suspense { font-size: clamp(60px, 14vw, 140px); text-align: center; animation: shake .35s infinite; }
+</style>
+</head>
+<body>
+<div class="sound-gate" id="gate">
+  <div>
+    <div class="big">🔊</div>
+    <h2 style="color:var(--pink-700);margin:10px 0">Sound on කරන්න tap කරන්න</h2>
+    <p class="muted">Browser එකට sound play කරන්න permission ඕන 💅</p>
+    <button class="btn huge" id="gateBtn">Let's go 💖</button>
+  </div>
+</div>
+
+<div class="wrap wide">
+  <div class="nav">
+    <span class="brand">💖 Beast Vote · Host</span>
+    <div class="row-gap" id="qnav"></div>
+  </div>
+  <h1 class="title" id="title">…</h1>
+  <p class="prompt" id="prompt"></p>
+
+  <div class="grid">
+    <div>
+      <div class="card qr center">
+        <img id="qr" alt="QR code">
+        <div class="spacer"></div>
+        <div class="muted">Scan කරලා vote කරන්න 📱</div>
+        <a id="link" target="_blank"></a>
+      </div>
+      <div class="spacer"></div>
+      <div class="card center">
+        <div class="timer" id="timer">3:00</div>
+        <div class="counter"><b id="count">0</b> votes 🗳️</div>
+        <div class="spacer"></div>
+        <div class="row-gap" id="controls"></div>
+      </div>
+    </div>
+    <div>
+      <div id="main"></div>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/fx.js"></script>
+<script>
+const qid = location.pathname.split('/').pop();
+const params = new URLSearchParams(location.search);
+let key = params.get('key');
+try { if (key) localStorage.setItem('bv_key', key); else key = localStorage.getItem('bv_key'); } catch {}
+const $ = (id) => document.getElementById(id);
+let question, all, state, offset = 0, tick, revealedShown = false, lastTotal = 0, drum = null;
+
+$('gateBtn').onclick = () => { FX.unlock(); FX.bubbles(6); $('gate').remove(); };
+
+async function init() {
+  const info = await (await fetch('/api/questions')).json();
+  all = info.questions;
+  question = all.find((q) => q.id === qid);
+  if (!question) { $('title').textContent = 'Question not found 😵'; return; }
+  document.title = question.title + ' · Host';
+  $('title').textContent = question.title;
+  $('prompt').textContent = question.prompt;
+  $('qr').src = '/qr/' + qid + '.png';
+  $('link').href = question.url; $('link').textContent = question.url;
+  $('qnav').innerHTML = all.map((q, i) =>
+    `<a class="btn small ${q.id === qid ? '' : 'ghost'}" href="/host/${q.id}">Q${i + 1}</a>`).join('') +
+    `<a class="btn small ghost" href="/" target="_blank">All QR</a>`;
+
+  window.socket = io({ auth: { q: qid, role: 'host', key } });
+  socket.on('badkey', () => FX.toast('⚠️ Admin key වැරදියි – buttons වැඩ කරන්නේ නෑ. Terminal එකේ host link එක use කරන්න.'));
+  socket.on('state', (s) => { offset = s.now - Date.now(); state = s; render(); });
+  socket.on('pop', (p) => {
+    FX.bubbles(5 + Math.floor(Math.random() * 4));
+    FX.shower([p.emoji, ...question.emojis], 4 + Math.floor(Math.random() * 3), 500);
+    FX.toast(p.line);
+    bump(p.total);
+  });
+  socket.on('react', (r) => FX.floatEmoji(r.emoji, { size: 40 }));
+  socket.on('started', () => { FX.play('start.mp3', 0.8); FX.shower(['🚀', '💖', '🗳️'], 16, 1200); });
+  socket.on('ended', () => { FX.play('end.mp3', 0.9); FX.shower(['⏰', '🛑', '🥁'], 14, 1000); });
+  socket.on('drumroll', () => {
+    drum = FX.play('drumroll.mp3', 0.9);
+    $('main').innerHTML = '<div class="card"><div id="suspense">🥁</div><h2 class="center">And the winner is…</h2></div>';
+    FX.shower(['🥁', '😱', '👀', '🤞'], 20, 3000);
+  });
+  socket.on('reset', () => { revealedShown = false; FX.toast('Reset done 🔄'); });
+}
+
+function bump(total) {
+  const el = $('count');
+  el.textContent = total;
+  el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+  lastTotal = total;
+}
+
+function optionsPreview() {
+  // options only – no counts while voting so nobody can see who's leading
+  return `<div class="opts ${question.type} locked-preview">${question.options.map((o, i) => question.type === 'image'
+    ? `<div class="opt" style="cursor:default"><span class="num">${i + 1}</span><img src="${o.img}" alt=""><span>${FX.esc(o.label)}</span></div>`
+    : `<div class="opt" style="cursor:default"><span class="em">${o.emoji || ''}</span><span>${FX.esc(o.label)}</span></div>`).join('')}</div>`;
+}
+
+function controls(html) { $('controls').innerHTML = html; }
+
+function render() {
+  clearInterval(tick);
+  const s = state;
+  if (s.total !== lastTotal) bump(s.total);
+  const timer = $('timer');
+  timer.classList.remove('hurry');
+
+  if (s.status === 'idle') {
+    timer.textContent = '3:00';
+    $('main').innerHTML = optionsPreview();
+    controls(`<button class="btn huge" onclick="socket.emit('start')">Start voting 🚀</button>`);
+  } else if (s.status === 'voting') {
+    $('main').innerHTML = optionsPreview();
+    const update = () => {
+      const left = s.endsAt - (Date.now() + offset);
+      timer.textContent = FX.fmt(left);
+      timer.classList.toggle('hurry', left < 15000);
+    };
+    update(); tick = setInterval(update, 250);
+    controls(`<span class="pill">🤫 Results hidden until reveal</span>
+      <button class="btn small ghost" onclick="if(confirm('Voting දැන්ම නවත්තන්නද?')) socket.emit('end')">End now ⏹️</button>`);
+  } else if (s.status === 'ended') {
+    timer.textContent = '0:00';
+    $('main').innerHTML = `<div class="card center"><div style="font-size:80px">🥁</div><h2>Voting closed!</h2><p class="muted">${s.total} votes ආවා. Ready නම් reveal කරන්න 👇</p></div><div class="spacer"></div>` + optionsPreview();
+    controls(`<button class="btn huge" id="revealBtn">Reveal answer 🥁</button>`);
+    $('revealBtn').onclick = () => {
+      $('revealBtn').disabled = true;
+      socket.emit('drumroll');
+      setTimeout(() => socket.emit('reveal'), 4200);
+    };
+  } else if (s.status === 'revealed') {
+    if (drum) { drum.pause(); drum = null; }
+    timer.textContent = '🎉';
+    FX.renderResults($('main'), question, s);
+    if (!revealedShown) { revealedShown = true; FX.revealShow(s); }
+    const i = all.findIndex((q) => q.id === qid);
+    const next = all[i + 1];
+    controls(`${next ? `<a class="btn" href="/host/${next.id}">Next question ➡️</a>` : `<span class="pill">That's all folks 🎀</span>`}
+      <button class="btn small ghost" onclick="if(confirm('මේ question එකේ votes ඔක්කොම මකන්නද?')) socket.emit('reset')">Reset 🔄</button>`);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
