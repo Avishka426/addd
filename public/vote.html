@@ -86,7 +86,7 @@ function renderOptions() {
   box.className = 'opts ' + question.type;
   box.innerHTML = question.options.map((o, i) => question.type === 'image'
     ? `<button class="opt" data-i="${i}"><span class="num">${i + 1}</span><img src="${o.img}" alt="" loading="lazy"><span>${FX.esc(o.label)}</span></button>`
-    : `<button class="opt" data-i="${i}"><span class="em">${o.emoji || ''}</span><span>${FX.esc(o.label)}</span></button>`
+    : `<button class="opt" data-i="${i}">${o.img ? `<img class="avatar" src="${o.img}" alt="">` : `<span class="em">${o.emoji || ''}</span>`}<span>${FX.esc(o.label)}</span></button>`
   ).join('');
   box.onclick = (e) => {
     const b = e.target.closest('.opt');

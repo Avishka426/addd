@@ -70,6 +70,7 @@ h1, h2, h3 { margin: 0; line-height: 1.15; }
   transition: transform .15s ease, border-color .15s, background .15s;
 }
 .opt .em { font-size: 1.5em; }
+.opt .avatar { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex-shrink: 0; box-shadow: 0 0 0 3px var(--pink-200); }
 .opt:active { transform: scale(.97); }
 .opt.sel { border-color: var(--pink-500); background: var(--pink-100); transform: scale(1.02); }
 .opt.sel::after {

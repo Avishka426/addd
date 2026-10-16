@@ -116,7 +116,7 @@ function optionsPreview() {
   // options only – no counts while voting so nobody can see who's leading
   return `<div class="opts ${question.type} locked-preview">${question.options.map((o, i) => question.type === 'image'
     ? `<div class="opt" style="cursor:default"><span class="num">${i + 1}</span><img src="${o.img}" alt=""><span>${FX.esc(o.label)}</span></div>`
-    : `<div class="opt" style="cursor:default"><span class="em">${o.emoji || ''}</span><span>${FX.esc(o.label)}</span></div>`).join('')}</div>`;
+    : `<div class="opt" style="cursor:default">${o.img ? `<img class="avatar" src="${o.img}" alt="">` : `<span class="em">${o.emoji || ''}</span>`}<span>${FX.esc(o.label)}</span></div>`).join('')}</div>`;
 }
 
 function controls(html) { $('controls').innerHTML = html; }
