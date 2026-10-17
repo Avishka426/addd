@@ -47,7 +47,7 @@ const findQ = (id) => QUESTIONS.find((q) => q.id === id);
 function publicQuestion(q) {
   return {
     id: q.id, title: q.title, prompt: q.prompt, type: q.type,
-    options: q.options, emojis: q.emojis, lines: q.lines, url: voteUrl(q.id),
+    options: q.options.map(({ revealImg, ...o }) => o), emojis: q.emojis, lines: q.lines, url: voteUrl(q.id),
   };
 }
 
@@ -84,6 +84,7 @@ function stateFor(qid) {
     out.revealLine = q.revealLine;
     out.revealSounds = q.revealSounds;
     out.revealEmojis = q.revealEmojis;
+    out.revealImg = q.options[q.winner].revealImg || null;
   }
   return out;
 }

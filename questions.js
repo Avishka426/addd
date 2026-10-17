@@ -88,7 +88,7 @@ module.exports = [
     type: 'text',
     options: [
       { label: 'කැන්ඩි අසේල', emoji: '🍬', img: '/img/q4-asela.jpg' },
-      { label: 'මොරටු යකා', emoji: '😈', img: '/img/q4-blank.svg' },
+      { label: 'මොරටු යකා', emoji: '😈', img: '/img/q4-blank.svg', revealImg: '/img/q4-moratu-reveal.jpg' },
       { label: 'ධනරාජා', emoji: '💰', img: '/img/q4-dhanaraja.jpg' },
       { label: 'දෙම්පසන්', emoji: '🕺', img: '/img/q4-dempasan.jpg' },
     ],

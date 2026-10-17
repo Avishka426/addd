@@ -121,7 +121,7 @@ const FX = (() => {
     const order = question.options.map((o, i) => i).sort((a, b) => state.results[b] - state.results[a]);
     container.innerHTML = `
       <div class="card winner-card">
-        ${w.img ? `<img src="${w.img}" alt="">` : w.emoji ? `<div style="font-size:90px">${w.emoji}</div>` : ''}
+        ${state.revealImg || w.img ? `<img src="${state.revealImg || w.img}" alt="">` : w.emoji ? `<div style="font-size:90px">${w.emoji}</div>` : ''}
         <div class="name">${esc(w.label)}</div>
         <div class="line">${esc(state.revealLine)}</div>
       </div>
@@ -131,7 +131,7 @@ const FX = (() => {
         return `<div class="result ${i === state.winner ? 'win' : ''}">
           <div class="bar" data-w="${pct}"></div>
           <div class="row">
-            ${o.img ? `<img src="${o.img}" alt="">` : `<span>${o.emoji || ''}</span>`}
+            ${(i === state.winner && state.revealImg) || o.img ? `<img src="${(i === state.winner && state.revealImg) || o.img}" alt="">` : `<span>${o.emoji || ''}</span>`}
             <span class="lbl">${esc(o.label)}</span>
             <span class="pct">${pct}%</span>
           </div></div>`;
